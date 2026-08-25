@@ -10,7 +10,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- ==================================================================
-     If you ever rename the repo or your name, change GH_REPO and GH_USER below to match.
+     Already set up for github.com/CyberShimo/cyber — nothing to edit.
+     If you ever rename the repo, change GH_REPO below to match.
      ================================================================== -->
 <script>
   const GH_USER = "CyberShimo";
@@ -179,7 +180,7 @@
           <li>Automatic trimming on a timer</li>
           <li>Runs quietly in the tray</li>
         </ul>
-        <div class="act"><a class="btn dl">Download for Windows</a></div>
+        <div class="act"><a class="btn dl" data-file="CyberCleanerMemory.exe">Download for Windows</a></div>
       </article>
 
       <article class="card">
@@ -194,7 +195,7 @@
           <li>Handles large projects</li>
           <li>Needs Wi-Fi or mobile data — the build runs on GitHub's servers</li>
         </ul>
-        <div class="act"><a class="btn dl">Download APK</a></div>
+        <div class="act"><a class="btn dl" data-file="CyberBuild.apk">Download APK</a></div>
       </article>
 
       <article class="card held">
@@ -297,7 +298,11 @@
   document.getElementById("footIssues").href = base + "/issues";
   document.getElementById("btnReport").href = base + "/issues/new";
   document.querySelectorAll(".dl").forEach(function(a){
-    a.href = base + "/releases/latest";
+    var f = a.getAttribute("data-file");
+    // Always points at the newest release's copy of that exact filename.
+    a.href = f ? base + "/releases/latest/download/" + f
+               : base + "/releases/latest";
+    a.setAttribute("download", "");
   });
 </script>
 </body>
