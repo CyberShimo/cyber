@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CyberVault — YouTube archive lookup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#D9DEE3;
+  --panel:#F4F6F7;
+  --panel-2:#EAEEF0;
+  --ink:#16202B;
+  --muted:#62717F;
+  --line:#B4BFC8;
+  --line-soft:#CDD5DB;
+  --live:#1F6E4A;
+  --gone:#A32C1E;
+  --found:#B4600A;
+  --wait:#7A8794;
+  --focus:#2A5C8A;
+  --sp:8px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+mono,.mono,code{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace}
+a{color:var(--focus)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:2px solid var(--focus);outline-offset:2px;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px}
+
+/* ---------- masthead ---------- */
+header.mast{
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#EDF1F3,#DFE4E8);
+}
+.mast-in{max-width:1080px;margin:0 auto;padding:14px 20px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.mark{font-weight:800;letter-spacing:-.02em;font-size:19px}
+.mark span{color:var(--muted);font-weight:500}
+.tagline{color:var(--muted);font-size:13.5px;margin-left:auto}
+
+/* ---------- search ---------- */
+.search{padding:28px 0 6px}
+.field{
+  display:flex;border:1.5px solid var(--ink);background:var(--panel);
+  border-radius:2px;overflow:hidden;
+}
+.field input{
+  flex:1;border:0;background:transparent;padding:16px 16px;font-size:17px;
+  font-family:'IBM Plex Mono',monospace;color:var(--ink);min-width:0;
+}
+.field input::placeholder{color:#93A0AB;font-family:'Archivo',sans-serif}
+.field button{
+  border:0;border-left:1.5px solid var(--ink);background:var(--ink);color:#F4F6F7;
+  padding:0 24px;font:600 15px 'Archivo',sans-serif;cursor:pointer;
+}
+.field button:hover{background:#0D1720}
+.field button:disabled{background:var(--wait);cursor:progress}
+
+.parsed{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  margin-top:10px;min-height:24px;font-size:13px;color:var(--muted);
+}
+.chip{
+  border:1px solid var(--line);background:var(--panel);padding:2px 9px;border-radius:2px;
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink);
+}
+.chip.kind{background:var(--ink);color:#F4F6F7;border-color:var(--ink)}
+
+/* ---------- source strip (hero) ---------- */
+.strip{
+  margin-top:22px;border:1px solid var(--line);background:var(--panel);
+  border-radius:2px;
+}
+.strip-head{
+  display:flex;align-items:center;gap:10px;padding:9px 14px;
+  border-bottom:1px solid var(--line-soft);font-size:13px;color:var(--muted);
+}
+.strip-head b{color:var(--ink);font-weight:600}
+.strip-grid{display:flex;flex-wrap:wrap;gap:1px;background:var(--line-soft)}
+.src{
+  flex:1 1 168px;background:var(--panel);padding:10px 12px;
+  display:flex;gap:9px;align-items:flex-start;min-width:0;
+}
+.dot{width:9px;height:9px;flex:0 0 9px;margin-top:6px;border-radius:1px;background:var(--wait)}
+.dot.wait{animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.28}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.dot.wait{animation:none;opacity:.6}}
+.dot.hit{background:var(--found)}
+.dot.live{background:var(--live)}
+.dot.miss{background:var(--line)}
+.dot.err{background:var(--gone)}
+.src-name{font-weight:600;font-size:13.5px;line-height:1.3}
+.src-note{font-size:12px;color:var(--muted);word-break:break-word}
+.src a{font-size:12px}
+
+/* ---------- record ---------- */
+.record{margin-top:26px;border:1px solid var(--line);background:var(--panel);border-radius:2px}
+.rec-top{display:flex;gap:0;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
+.thumb{
+  flex:0 0 268px;background:#0E161D;position:relative;aspect-ratio:16/9;
+  border-right:1px solid var(--line-soft);overflow:hidden;
+}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .empty{
+  position:absolute;inset:0;display:grid;place-items:center;color:#5C6C79;
+  font:500 12px 'IBM Plex Mono',monospace;text-align:center;padding:12px;
+}
+.rec-meta{flex:1 1 320px;padding:16px 18px;min-width:0}
+.rec-title{font-size:20px;font-weight:600;line-height:1.25;margin:0 0 6px;word-wrap:break-word}
+.rec-sub{color:var(--muted);font-size:13.5px;margin-bottom:12px}
+.verdict{
+  display:inline-block;padding:3px 10px;border-radius:2px;font-weight:600;font-size:13px;
+  color:#F4F6F7;margin-bottom:12px;
+}
+.verdict.live{background:var(--live)}
+.verdict.gone{background:var(--gone)}
+.verdict.found{background:var(--found)}
+.verdict.unknown{background:var(--wait)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:13.5px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;word-break:break-word}
+.rec-desc{
+  padding:14px 18px;border-top:1px solid var(--line-soft);font-size:14px;
+  white-space:pre-wrap;max-height:220px;overflow:auto;color:#2C3946;max-width:72ch;
+}
+.rec-act{padding:12px 18px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line-soft)}
+
+/* ---------- buttons ---------- */
+.btn{
+  border:1px solid var(--ink);background:transparent;color:var(--ink);
+  padding:6px 13px;border-radius:2px;font:500 13.5px 'Archivo',sans-serif;
+  cursor:pointer;text-decoration:none;display:inline-block;
+}
+.btn:hover{background:var(--ink);color:#F4F6F7}
+.btn.solid{background:var(--ink);color:#F4F6F7}
+.btn.solid:hover{background:#0D1720}
+.btn.ghost{border-color:var(--line);color:var(--muted)}
+.btn.ghost:hover{background:var(--panel-2);color:var(--ink);border-color:var(--muted)}
+
+/* ---------- listing ---------- */
+.listing{margin-top:26px;border:1px solid var(--line);background:var(--panel);border-radius:2px}
+.list-head{
+  padding:11px 14px;border-bottom:1px solid var(--line-soft);
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.list-head h2{margin:0;font-size:15px;font-weight:600}
+.count{color:var(--muted);font-size:13px}
+.row{
+  display:flex;gap:12px;align-items:center;padding:9px 14px;
+  border-top:1px solid #E3E8EB;cursor:pointer;
+}
+.row:hover{background:var(--panel-2)}
+.row:first-of-type{border-top:0}
+.row-th{flex:0 0 76px;aspect-ratio:16/9;background:#0E161D;border-radius:1px;overflow:hidden}
+.row-th img{width:100%;height:100%;object-fit:cover;display:block}
+.row-main{flex:1;min-width:0}
+.row-t{font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-s{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:2px;color:#F4F6F7;flex:0 0 auto}
+.tag.live{background:var(--live)}
+.tag.gone{background:var(--gone)}
+.tag.arch{background:var(--found)}
+.tag.unk{background:var(--wait)}
+
+/* ---------- panels ---------- */
+details.tools{margin-top:26px;border:1px solid var(--line);background:var(--panel);border-radius:2px}
+details.tools>summary{
+  padding:11px 14px;cursor:pointer;font-weight:600;font-size:14px;list-style:none;
+  display:flex;align-items:center;gap:8px;
+}
+details.tools>summary::-webkit-details-marker{display:none}
+details.tools>summary::before{content:'+';color:var(--muted);font-family:'IBM Plex Mono',monospace}
+details.tools[open]>summary::before{content:'–'}
+.tools-body{padding:4px 14px 16px;border-top:1px solid var(--line-soft)}
+.tools-body p{font-size:13.5px;color:var(--muted);max-width:70ch}
+label.f{display:block;margin:12px 0 4px;font-size:13px;font-weight:600}
+input.t,select.t{
+  width:100%;padding:8px 10px;border:1px solid var(--line);background:#fff;
+  border-radius:2px;font:400 13px 'IBM Plex Mono',monospace;color:var(--ink);
+}
+.hint{font-size:12px;color:var(--muted);margin-top:4px;max-width:70ch}
+.status{margin-top:14px;font-size:13px;color:var(--muted);min-height:20px}
+.note{
+  border-left:3px solid var(--found);background:#F7F2E9;padding:10px 13px;
+  font-size:13.5px;margin:14px 0;max-width:74ch;
+}
+.empty-state{
+  margin-top:26px;padding:40px 22px;border:1px dashed var(--line);
+  border-radius:2px;text-align:center;color:var(--muted);
+}
+.empty-state h2{margin:0 0 8px;font-size:17px;color:var(--ink);font-weight:600}
+.empty-state p{margin:0 auto;max-width:56ch;font-size:14px}
+.ex{margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.ex button{
+  border:1px solid var(--line);background:var(--panel);color:var(--muted);
+  padding:4px 10px;border-radius:2px;font:400 12.5px 'IBM Plex Mono',monospace;cursor:pointer;
+}
+.ex button:hover{border-color:var(--ink);color:var(--ink)}
+footer{padding:26px 20px;text-align:center;color:var(--muted);font-size:12.5px}
+@media(max-width:620px){
+  .thumb{flex:1 1 100%;border-right:0;border-bottom:1px solid var(--line-soft)}
+  .field input{font-size:15px;padding:13px}
+  .field button{padding:0 16px}
+}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="mast-in">
+    <div class="mark">CyberVault<span> / youtube</span></div>
+    <div class="tagline">What the archives still remember</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="search">
+    <div class="field">
+      <input id="q" autocomplete="off" spellcheck="false"
+             placeholder="Video link, video ID, @handle, channel link, or a name to search">
+      <button id="go">Look up</button>
+    </div>
+    <div class="parsed" id="parsed"></div>
+  </div>
+
+  <div id="stage"></div>
+
+  <div class="empty-state" id="intro">
+    <h2>Start with anything you've got</h2>
+    <p>An 11-character video ID, a dead link from an old playlist, a channel handle, or just a
+       title you half remember. Every source below gets asked at once and reports back on its own.</p>
+    <div class="ex">
+      <button data-ex="dQw4w9WgXcQ">dQw4w9WgXcQ</button>
+      <button data-ex="@veritasium">@veritasium</button>
+      <button data-ex="https://youtu.be/jNQXAC9IVRw">youtu.be/jNQXAC9IVRw</button>
+    </div>
+  </div>
+
+  <details class="tools" id="vaultPanel">
+    <summary>Vault <span class="count" id="vaultCount"></span></summary>
+    <div class="tools-body">
+      <p>Anything you keep is stored in this browser only. Nothing is uploaded. Paste a link you
+         were given privately and it saves the same as any other — it just never becomes searchable
+         by anyone else.</p>
+      <div id="vaultList"></div>
+      <div class="rec-act" style="padding-left:0;border:0">
+        <button class="btn" id="vaultExport">Export as JSON</button>
+        <button class="btn ghost" id="vaultClear">Clear vault</button>
+      </div>
+    </div>
+  </details>
+
+  <details class="tools">
+    <summary>Settings</summary>
+    <div class="tools-body">
+      <label class="f" for="ytkey">YouTube Data API key</label>
+      <input class="t" id="ytkey" placeholder="AIza… (optional)">
+      <div class="hint">Unlocks name search and full channel listings. Get one from Google Cloud
+        Console, enable YouTube Data API v3, then restrict it to your site's domain under HTTP
+        referrers. Free tier is 10,000 units/day and a keyword search costs 100 of them.</div>
+
+      <label class="f" for="proxy">CORS relay prefix</label>
+      <input class="t" id="proxy" placeholder="https://your-worker.workers.dev/?url=">
+      <div class="hint">Some archives don't send CORS headers, so a browser can't read them directly.
+        Point this at your own relay and those sources switch on. A 30-line Cloudflare Worker that
+        does the job ships alongside this file.</div>
+
+      <label class="f" for="invidious">Invidious instance</label>
+      <input class="t" id="invidious" placeholder="https://inv.nadeko.net">
+      <div class="hint">Keyless YouTube metadata and channel listings. Public instances go up and
+        down constantly — swap in a working one when this source starts erroring.</div>
+
+      <div class="status" id="settingsStatus"></div>
+    </div>
+  </details>
+
+  <details class="tools">
+    <summary>What each source actually is</summary>
+    <div class="tools-body" id="srcDocs"></div>
+  </details>
+
+</div>
+
+<footer>
+  Reads public archives. Stores nothing on a server. Not affiliated with YouTube or the Internet Archive.
+</footer>
+
+<script>
+"use strict";
+
+/* ============================================================
+   storage — degrades to memory if localStorage is unavailable
+   ============================================================ */
+const store = (() => {
+  let ok = true;
+  try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); }
+  catch(e){ ok = false; }
+  const mem = {};
+  return {
+    get(k, d){ try { const v = ok ? localStorage.getItem(k) : mem[k];
+                     return v == null ? d : JSON.parse(v); } catch(e){ return d; } },
+    set(k, v){ const s = JSON.stringify(v);
+               try { ok ? localStorage.setItem(k, s) : (mem[k] = s); } catch(e){ mem[k] = s; } }
+  };
+})();
+
+const cfg = {
+  get ytkey(){ return store.get("cv.ytkey",""); },
+  get proxy(){ return store.get("cv.proxy",""); },
+  get inv(){ return store.get("cv.inv","https://inv.nadeko.net"); }
+};
+
+/* ============================================================
+   fetch helpers
+   ============================================================ */
+function viaProxy(url){
+  const p = cfg.proxy;
+  if (!p) return null;
+  return p.includes("{url}") ? p.replace("{url}", encodeURIComponent(url))
+                             : p + encodeURIComponent(url);
+}
+
+async function raw(url, { timeout = 12000, proxy = "fallback" } = {}){
+  const attempt = async (u) => {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), timeout);
+    try {
+      const r = await fetch(u, { signal: ctl.signal, redirect: "follow" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return await r.text();
+    } finally { clearTimeout(timer); }
+  };
+  if (proxy === "always"){
+    const p = viaProxy(url);
+    if (!p) throw new Error("needs relay");
+    return attempt(p);
+  }
+  try { return await attempt(url); }
+  catch(e){
+    const p = (proxy === "fallback") ? viaProxy(url) : null;
+    if (!p) throw e;
+    return attempt(p);
+  }
+}
+
+async function json(url, opts){ return JSON.parse(await raw(url, opts)); }
+
+/* thumbnail probe: <img> is not subject to CORS, so this always works.
+   YouTube serves a 120x90 grey placeholder when hqdefault has nothing behind it. */
+function thumbProbe(id){
+  return new Promise(res => {
+    const img = new Image();
+    const done = v => { img.onload = img.onerror = null; res(v); };
+    const timer = setTimeout(() => done("unknown"), 9000);
+    img.onload  = () => { clearTimeout(timer); done(img.naturalWidth > 120 ? "present" : "placeholder"); };
+    img.onerror = () => { clearTimeout(timer); done("missing"); };
+    img.src = "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
+  });
+}
+
+/* ============================================================
+   input parsing
+   ============================================================ */
+const ID_RE = /^[A-Za-z0-9_-]{11}$/;
+const UC_RE = /^UC[A-Za-z0-9_-]{22}$/;
+
+function parseInput(sRaw){
+  const s = (sRaw || "").trim();
+  if (!s) return { kind: "empty" };
+
+  if (ID_RE.test(s) && !s.includes(" ")) return { kind: "video", id: s };
+  if (UC_RE.test(s)) return { kind: "channel", ucid: s };
+  if (s.startsWith("@") && !s.includes(" ")) return { kind: "channel", handle: s.slice(1) };
+
+  let u = null;
+  try { u = new URL(s.match(/^https?:\/\//i) ? s : "https://" + s); } catch(e){ u = null; }
+
+  if (u){
+    const host = u.hostname.replace(/^(www|m|music)\./, "");
+    const path = u.pathname;
+    const yt = /(^|\.)youtube\.com$|^youtu\.be$|^youtube-nocookie\.com$/.test(host);
+
+    if (host === "youtu.be"){
+      const id = path.slice(1).split("/")[0];
+      if (ID_RE.test(id)) return { kind: "video", id };
+    }
+    if (yt){
+      const v = u.searchParams.get("v");
+      if (v && ID_RE.test(v)) return { kind: "video", id: v };
+      const m = path.match(/^\/(?:shorts|embed|live|v)\/([A-Za-z0-9_-]{11})/);
+      if (m) return { kind: "video", id: m[1] };
+      const c = path.match(/^\/channel\/(UC[A-Za-z0-9_-]{22})/);
+      if (c) return { kind: "channel", ucid: c[1] };
+      const h = path.match(/^\/@([^/]+)/);
+      if (h) return { kind: "channel", handle: decodeURIComponent(h[1]) };
+      const legacy = path.match(/^\/(?:c|user)\/([^/]+)/);
+      if (legacy) return { kind: "channel", legacy: decodeURIComponent(legacy[1]) };
+      const pl = u.searchParams.get("list");
+      if (pl) return { kind: "playlist", list: pl };
+    }
+    /* a stray URL from anywhere else — pull an ID out if one is hiding in it */
+    const any = s.match(/[?&/]v[=/]([A-Za-z0-9_-]{11})|\/([A-Za-z0-9_-]{11})(?:[?&#]|$)/);
+    if (any) return { kind: "video", id: any[1] || any[2] };
+  }
+  return { kind: "query", text: s };
+}
+
+function describe(p){
+  switch(p.kind){
+    case "video":    return ["video ID", p.id];
+    case "channel":  return ["channel", p.ucid || ("@" + p.handle) || p.legacy];
+    case "playlist": return ["playlist", p.list];
+    case "query":    return ["name search", p.text];
+    default:         return ["", ""];
+  }
+}
+
+/* ============================================================
+   source registry
+   ============================================================ */
+const SOURCES = [
+  {
+    id: "thumbcdn", name: "Thumbnail CDN", scope: "video",
+    about: "Asks Google's image CDN whether a preview still exists for this ID. Costs nothing " +
+           "and needs no CORS. A thumbnail can outlive the video by months, so treat a hit as " +
+           "'this ID was real' rather than 'this video is up'.",
+    async run(ctx){
+      const r = await thumbProbe(ctx.id);
+      if (r === "present") return { state: "hit", note: "Preview image served",
+        data: { thumb: "https://i.ytimg.com/vi/" + ctx.id + "/hqdefault.jpg" } };
+      if (r === "placeholder") return { state: "miss", note: "Grey placeholder — ID likely never existed" };
+      if (r === "missing") return { state: "miss", note: "No image behind this ID" };
+      return { state: "err", note: "Timed out" };
+    }
+  },
+  {
+    id: "oembed", name: "YouTube oEmbed", scope: "video",
+    about: "The live liveness check. YouTube's oEmbed endpoint only answers for videos that are " +
+           "currently viewable, so a clean response means it's up right now, and a failure means " +
+           "removed, private, or region-locked. Routed through noembed.com because YouTube's own " +
+           "endpoint sends no CORS header.",
+    async run(ctx){
+      const target = "https://www.youtube.com/watch?v=" + ctx.id;
+      const d = await json("https://noembed.com/embed?url=" + encodeURIComponent(target), { timeout: 10000 });
+      if (d && d.error) return { state: "miss", note: "Not currently viewable" };
+      return {
+        state: "live", note: "Live on YouTube",
+        data: { title: d.title, author: d.author_name, authorUrl: d.author_url,
+                thumb: d.thumbnail_url, live: true }
+      };
+    }
+  },
+  {
+    id: "fytv", name: "Find YouTube Video", scope: "video",
+    about: "TheTechRobo's aggregator. One call fans out to roughly a dozen archives — Wayback, " +
+           "archive.org item pages, GhostArchive, #youtubearchive, Filmot metadata and more — and " +
+           "returns a verdict on whether video, metadata or comments survived anywhere. This is the " +
+           "single highest-value source here. It may need the relay to be readable from a browser.",
+    async run(ctx){
+      const d = await json("https://findyoutubevideo.thetechrobo.ca/api/v3/" + ctx.id, { timeout: 25000 });
+      const v = d.verdict || {};
+      const keys = d.keys || {};
+      const hits = [];
+      for (const k in keys){
+        const s = keys[k];
+        if (s && s.archived) hits.push({ name: s.name || k, url: (s.available && s.available[0]) || s.rawraw || null });
+      }
+      const meta = {};
+      for (const k in keys){
+        const m = keys[k] && keys[k].metadata;
+        if (m){
+          if (m.title && !meta.title) meta.title = m.title;
+          if (m.channel && !meta.author) meta.author = m.channel;
+          if (m.description && !meta.description) meta.description = m.description;
+          if (m.uploaded && !meta.date) meta.date = m.uploaded;
+        }
+      }
+      if (!hits.length) return { state: "miss", note: v.human_friendly || "No archive found" };
+      return {
+        state: v.video ? "hit" : "hit",
+        note: (v.human_friendly || (hits.length + " archives")) ,
+        links: hits.filter(h => h.url).slice(0, 6),
+        data: meta
+      };
+    }
+  },
+  {
+    id: "wbavail", name: "Wayback snapshot", scope: "video",
+    about: "Asks the Internet Archive whether it ever crawled this watch page. A snapshot usually " +
+           "captures the title, channel, description and view count as they were on that day — " +
+           "the video file itself is rarely saved, since the page and the stream are different things.",
+    async run(ctx){
+      const target = "youtube.com/watch?v=" + ctx.id;
+      const d = await json("https://archive.org/wayback/available?url=" + encodeURIComponent(target), { timeout: 14000 });
+      const s = d && d.archived_snapshots && d.archived_snapshots.closest;
+      if (!s || !s.available) return { state: "miss", note: "Never crawled" };
+      const ts = s.timestamp || "";
+      const pretty = ts.length >= 8 ? ts.slice(0,4) + "-" + ts.slice(4,6) + "-" + ts.slice(6,8) : ts;
+      return { state: "hit", note: "Snapshot from " + pretty,
+               links: [{ name: "Open snapshot", url: s.url }] };
+    }
+  },
+  {
+    id: "wbcdx", name: "Wayback capture list", scope: "video",
+    about: "The full crawl history for the watch page rather than just the closest one. Handy when " +
+           "the newest capture is a 'Video unavailable' page and an older one still has the real " +
+           "metadata. The CDX endpoint is aggressively rate-limited, so this one fails often.",
+    async run(ctx){
+      const url = "https://web.archive.org/cdx/search/cdx?url=" +
+        encodeURIComponent("youtube.com/watch?v=" + ctx.id) +
+        "&output=json&limit=60&collapse=timestamp:6&fl=timestamp,statuscode";
+      const rows = await json(url, { timeout: 18000 });
+      if (!Array.isArray(rows) || rows.length < 2) return { state: "miss", note: "No captures" };
+      const body = rows.slice(1);
+      const links = body.slice(0, 5).map(r => ({
+        name: r[0].slice(0,4) + "-" + r[0].slice(4,6) + "-" + r[0].slice(6,8),
+        url: "https://web.archive.org/web/" + r[0] + "/https://www.youtube.com/watch?v=" + ctx.id
+      }));
+      return { state: "hit", note: body.length + " captures", links };
+    }
+  },
+  {
+    id: "iaitem", name: "Archive.org items", scope: "video",
+    about: "Separate from the Wayback Machine: these are real uploaded video files sitting in " +
+           "archive.org collections, often named youtube-<id>. When a hit lands here you can " +
+           "usually watch the actual video, not just read about it.",
+    async run(ctx){
+      const q = 'identifier:(youtube-' + ctx.id + ') OR "' + ctx.id + '"';
+      const url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(q) +
+        "&fl%5B%5D=identifier&fl%5B%5D=title&rows=6&page=1&output=json";
+      const d = await json(url, { timeout: 18000 });
+      const docs = (d && d.response && d.response.docs) || [];
+      if (!docs.length) return { state: "miss", note: "No items" };
+      return {
+        state: "hit", note: docs.length + " item" + (docs.length > 1 ? "s" : ""),
+        links: docs.slice(0,4).map(x => ({ name: x.identifier, url: "https://archive.org/details/" + x.identifier })),
+        data: { title: docs[0].title }
+      };
+    }
+  },
+  {
+    id: "ryd", name: "Return YouTube Dislike", scope: "video",
+    about: "A crowd-collected vote database keyed by video ID. It holds view, like and dislike " +
+           "counts plus an upload date, and its records survive deletion — so it often proves a " +
+           "video existed and roughly how big it was, even when every page archive missed it.",
+    async run(ctx){
+      const d = await json("https://returnyoutubedislikeapi.com/votes?videoId=" + ctx.id, { timeout: 12000 });
+      if (!d || d.id !== ctx.id) return { state: "miss", note: "Not in database" };
+      const views = (d.viewCount || 0).toLocaleString();
+      return {
+        state: "hit",
+        note: views + " views · " + (d.likes||0).toLocaleString() + " up / " + (d.dislikes||0).toLocaleString() + " down",
+        data: { date: d.dateCreated, views: d.viewCount, likes: d.likes, dislikes: d.dislikes }
+      };
+    }
+  },
+  {
+    id: "invid", name: "Invidious", scope: "video",
+    about: "A privacy front-end for YouTube with an open JSON API. Gives you full metadata and " +
+           "channel listings without an API key or a quota, which makes it the workhorse when you " +
+           "haven't set a Google key. Public instances are volunteer-run and go down constantly.",
+    async run(ctx){
+      const base = cfg.inv.replace(/\/+$/, "");
+      const d = await json(base + "/api/v1/videos/" + ctx.id + "?fields=title,author,authorId,description,published,viewCount,lengthSeconds", { timeout: 15000 });
+      if (!d || d.error) return { state: "miss", note: (d && d.error) || "Not returned" };
+      return {
+        state: "live", note: "Metadata retrieved",
+        data: { title: d.title, author: d.author, ucid: d.authorId, description: d.description,
+                views: d.viewCount, date: d.published ? new Date(d.published * 1000).toISOString().slice(0,10) : null,
+                seconds: d.lengthSeconds }
+      };
+    }
+  },
+  {
+    id: "ytapi", name: "YouTube Data API", scope: "video",
+    about: "The official source, and the only one that gives authoritative current metadata. " +
+           "Needs your own key. It only ever returns public videos, and it says nothing about " +
+           "anything that has been deleted.",
+    skip: () => !cfg.ytkey,
+    async run(ctx){
+      const url = "https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=" +
+        ctx.id + "&key=" + encodeURIComponent(cfg.ytkey);
+      const d = await json(url, { timeout: 14000, proxy: "never" });
+      if (!d.items || !d.items.length) return { state: "miss", note: "Not public / not found" };
+      const it = d.items[0], sn = it.snippet, st = it.statistics || {};
+      return {
+        state: "live", note: "Public and indexed",
+        data: { title: sn.title, author: sn.channelTitle, ucid: sn.channelId,
+                description: sn.description, date: (sn.publishedAt||"").slice(0,10),
+                views: st.viewCount, thumb: sn.thumbnails && (sn.thumbnails.maxres||sn.thumbnails.high||{}).url }
+      };
+    }
+  },
+  {
+    id: "linkouts", name: "Manual archives", scope: "video",
+    about: "Four services with no readable API from a browser: GhostArchive and PreserveTube keep " +
+           "their own copies, archive.today mirrors pages, and Filmot indexes subtitles so you can " +
+           "search on what was said. Opened by hand rather than queried.",
+    instant: true,
+    async run(ctx){
+      return {
+        state: "hit", note: "Open by hand",
+        links: [
+          { name: "GhostArchive", url: "https://ghostarchive.org/varchive/" + ctx.id },
+          { name: "PreserveTube", url: "https://preservetube.com/watch?v=" + ctx.id },
+          { name: "archive.today", url: "https://archive.ph/newest/https://www.youtube.com/watch?v=" + ctx.id },
+          { name: "Filmot", url: "https://filmot.com/video/" + ctx.id }
+        ]
+      };
+    }
+  }
+];
+
+/* ============================================================
+   rendering
+   ============================================================ */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const el = (t, c, txt) => { const n = document.createElement(t); if (c) n.className = c;
+                            if (txt != null) n.textContent = txt; return n; };
+const esc = s => String(s == null ? "" : s);
+
+function renderDocs(){
+  const box = $("#srcDocs");
+  box.innerHTML = "";
+  SOURCES.forEach(s => {
+    const h = el("div"); h.style.marginBottom = "14px";
+    const t = el("div", null, s.name);
+    t.style.cssText = "font-weight:600;font-size:14px";
+    const p = el("p", null, s.about);
+    p.style.margin = "2px 0 0";
+    h.append(t, p); box.append(h);
+  });
+}
+
+let RUN = 0;
+
+function buildStrip(list){
+  const strip = el("div", "strip");
+  const head = el("div", "strip-head");
+  head.append(el("b", null, "Sources"), el("span", null, "asked in parallel · each answers on its own"));
+  const grid = el("div", "strip-grid");
+  list.forEach(s => {
+    const cell = el("div", "src"); cell.id = "src-" + s.id;
+    const dot = el("div", "dot wait");
+    const body = el("div"); body.style.minWidth = "0";
+    body.append(el("div", "src-name", s.name), el("div", "src-note", "waiting…"));
+    cell.append(dot, body); grid.append(cell);
+  });
+  strip.append(head, grid);
+  return strip;
+}
+
+function paintSource(id, res){
+  const cell = document.getElementById("src-" + id);
+  if (!cell) return;
+  cell.querySelector(".dot").className = "dot " + res.state;
+  const body = cell.children[1];
+  while (body.children.length > 1) body.removeChild(body.lastChild);
+  body.append(el("div", "src-note", res.note || ""));
+  (res.links || []).forEach(l => {
+    if (!l.url) return;
+    const a = el("a", null, l.name || "open");
+    a.href = l.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+    a.style.marginRight = "8px";
+    body.append(a);
+  });
+}
+
+function verdictOf(agg){
+  if (agg.live) return ["live", "Live on YouTube"];
+  if (agg.archived) return ["found", "Gone from YouTube — recovered from archives"];
+  if (agg.existed) return ["gone", "Gone, and no archive found yet"];
+  return ["unknown", "Nothing conclusive"];
+}
+
+function renderRecord(id, agg){
+  const rec = el("div", "record"); rec.id = "record";
+  const top = el("div", "rec-top");
+
+  const th = el("div", "thumb");
+  if (agg.thumb){
+    const img = new Image(); img.src = agg.thumb; img.alt = "";
+    img.onerror = () => { th.innerHTML = ""; th.append(el("div", "empty", "no preview survived")); };
+    th.append(img);
+  } else {
+    th.append(el("div", "empty", "no preview survived"));
+  }
+
+  const meta = el("div", "rec-meta");
+  const [vc, vt] = verdictOf(agg);
+  const v = el("div", "verdict " + vc, vt);
+  meta.append(v);
+  meta.append(el("h1", "rec-title", agg.title || "Title not recovered"));
+  meta.append(el("div", "rec-sub", agg.author ? "by " + agg.author : "channel not recovered"));
+
+  const kv = el("dl", "kv");
+  const pair = (k, val) => { if (val == null || val === "") return;
+                             kv.append(el("dt", null, k), el("dd", null, String(val))); };
+  pair("Video ID", id);
+  pair("Uploaded", agg.date);
+  pair("Views", agg.views ? Number(agg.views).toLocaleString() : null);
+  if (agg.likes != null) pair("Votes", Number(agg.likes).toLocaleString() + " up / " + Number(agg.dislikes||0).toLocaleString() + " down");
+  pair("Length", agg.seconds ? fmtDur(agg.seconds) : null);
+  pair("Sources hit", agg.hitNames.join(", ") || "none");
+  meta.append(kv);
+
+  top.append(th, meta);
+  rec.append(top);
+
+  if (agg.description){
+    rec.append(el("div", "rec-desc", agg.description));
+  }
+
+  const act = el("div", "rec-act");
+  const save = el("button", "btn solid", "Save to vault");
+  save.onclick = () => { vaultAdd({ id, title: agg.title, author: agg.author, date: agg.date,
+                                    thumb: agg.thumb, verdict: vc, saved: new Date().toISOString() });
+                         save.textContent = "Saved"; save.disabled = true; };
+  act.append(save);
+  const yt = el("a", "btn", "Open on YouTube");
+  yt.href = "https://www.youtube.com/watch?v=" + id; yt.target = "_blank"; yt.rel = "noopener";
+  act.append(yt);
+  const sub = el("a", "btn ghost", "Ask the Internet Archive to save it now");
+  sub.href = "https://web.archive.org/save/https://www.youtube.com/watch?v=" + id;
+  sub.target = "_blank"; sub.rel = "noopener";
+  act.append(sub);
+  rec.append(act);
+  return rec;
+}
+
+function fmtDur(s){
+  s = Number(s) || 0;
+  const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return (h ? h + ":" + String(m).padStart(2,"0") : String(m)) + ":" + String(x).padStart(2,"0");
+}
+
+/* ============================================================
+   video lookup
+   ============================================================ */
+async function lookupVideo(id){
+  const run = ++RUN;
+  const stage = $("#stage");
+  stage.innerHTML = "";
+  $("#intro").style.display = "none";
+
+  const active = SOURCES.filter(s => s.scope === "video" && !(s.skip && s.skip()));
+  stage.append(buildStrip(active));
+  const recSlot = el("div"); stage.append(recSlot);
+
+  const agg = { hitNames: [], live: false, archived: false, existed: false };
+  const merge = (name, d) => {
+    if (!d) return;
+    ["title","author","description","date","thumb","views","likes","dislikes","seconds","ucid"].forEach(k => {
+      if (agg[k] == null && d[k] != null && d[k] !== "") agg[k] = d[k];
+    });
+  };
+
+  let painted = false;
+  const repaint = () => {
+    if (run !== RUN) return;
+    const old = document.getElementById("record");
+    const next = renderRecord(id, agg);
+    if (old) recSlot.replaceChild(next, old); else recSlot.append(next);
+    painted = true;
+  };
+
+  await Promise.all(active.map(async s => {
+    let res;
+    try { res = await s.run({ id }); }
+    catch(e){ res = { state: "err", note: String(e.message || e).slice(0, 90) }; }
+    if (run !== RUN) return;
+    paintSource(s.id, res);
+    if (res.state === "live"){ agg.live = true; agg.existed = true; }
+    if (res.state === "hit" && s.id !== "linkouts"){ agg.existed = true;
+      if (["fytv","wbavail","wbcdx","iaitem"].includes(s.id)) agg.archived = true; }
+    if (res.state === "hit" || res.state === "live"){
+      if (s.id !== "linkouts") agg.hitNames.push(s.name);
+    }
+    merge(s.name, res.data);
+    repaint();
+  }));
+
+  if (!painted) repaint();
+}
+
+/* ============================================================
+   channel + query
+   ============================================================ */
+async function resolveChannel(p){
+  if (p.ucid) return p.ucid;
+  const base = cfg.inv.replace(/\/+$/, "");
+  const term = p.handle ? "@" + p.handle : p.legacy;
+  if (cfg.ytkey && p.handle){
+    try {
+      const d = await json("https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=" +
+        encodeURIComponent("@" + p.handle) + "&key=" + encodeURIComponent(cfg.ytkey), { proxy: "never" });
+      if (d.items && d.items[0]) return d.items[0].id;
+    } catch(e){}
+  }
+  const d = await json(base + "/api/v1/search?q=" + encodeURIComponent(term) + "&type=channel", { timeout: 16000 });
+  if (Array.isArray(d) && d[0] && d[0].authorId) return d[0].authorId;
+  throw new Error("Couldn't resolve that channel. Try the /channel/UC… form, or add an API key.");
+}
+
+async function listChannel(ucid){
+  const base = cfg.inv.replace(/\/+$/, "");
+  const out = [];
+  let meta = { title: ucid };
+
+  if (cfg.ytkey){
+    try {
+      const ch = await json("https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails,statistics&id=" +
+        ucid + "&key=" + encodeURIComponent(cfg.ytkey), { proxy: "never" });
+      const c = ch.items && ch.items[0];
+      if (c){
+        meta = { title: c.snippet.title, videos: c.statistics && c.statistics.videoCount };
+        const pl = c.contentDetails.relatedPlaylists.uploads;
+        let page = "";
+        for (let i = 0; i < 8; i++){
+          const d = await json("https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails" +
+            "&maxResults=50&playlistId=" + pl + (page ? "&pageToken=" + page : "") +
+            "&key=" + encodeURIComponent(cfg.ytkey), { proxy: "never" });
+          (d.items || []).forEach(it => out.push({
+            id: it.contentDetails.videoId,
+            title: it.snippet.title,
+            date: (it.contentDetails.videoPublishedAt || it.snippet.publishedAt || "").slice(0,10),
+            state: "live"
+          }));
+          page = d.nextPageToken; if (!page) break;
+        }
+        return { meta, videos: out };
+      }
+    } catch(e){}
+  }
+
+  const d = await json(base + "/api/v1/channels/" + ucid + "/videos", { timeout: 20000 });
+  const vids = Array.isArray(d) ? d : (d.videos || []);
+  meta = { title: (vids[0] && vids[0].author) || ucid };
+  vids.forEach(v => out.push({
+    id: v.videoId, title: v.title, state: "live",
+    date: v.published ? new Date(v.published * 1000).toISOString().slice(0,10) : ""
+  }));
+  return { meta, videos: out };
+}
+
+/* Deep scan: pull historic channel-page snapshots out of the Wayback Machine and
+   scrape video IDs from them. This is where deleted uploads turn up. */
+async function waybackChannelScan(ucid, known, onFound, onStatus){
+  const patterns = [
+    "youtube.com/channel/" + ucid + "*",
+    "youtube.com/channel/" + ucid + "/videos*"
+  ];
+  const seen = new Set(known);
+  const found = [];
+  let snaps = [];
+
+  for (const pat of patterns){
+    onStatus("Listing captures for " + pat.slice(0, 52) + "…");
+    try {
+      const url = "https://web.archive.org/cdx/search/cdx?url=" + encodeURIComponent(pat) +
+        "&matchType=prefix&output=json&collapse=timestamp:6&filter=statuscode:200&limit=40" +
+        "&fl=timestamp,original";
+      const rows = await json(url, { timeout: 25000 });
+      if (Array.isArray(rows) && rows.length > 1) snaps = snaps.concat(rows.slice(1));
+    } catch(e){ onStatus("Capture list failed: " + (e.message || e)); }
+  }
+
+  if (!snaps.length){ onStatus("No channel-page captures found."); return found; }
+  snaps = snaps.slice(0, 14);
+  onStatus("Reading " + snaps.length + " snapshots…");
+
+  for (let i = 0; i < snaps.length; i++){
+    const [ts, orig] = snaps[i];
+    onStatus("Snapshot " + (i+1) + " of " + snaps.length + " (" + ts.slice(0,4) + "-" + ts.slice(4,6) + ")…");
+    try {
+      const html = await raw("https://web.archive.org/web/" + ts + "id_/" + orig, { timeout: 22000 });
+      const ids = html.match(/(?:watch\?v=|"videoId":")([A-Za-z0-9_-]{11})/g) || [];
+      ids.forEach(m => {
+        const id = m.slice(-11);
+        if (ID_RE.test(id) && !seen.has(id)){
+          seen.add(id);
+          const rec = { id, title: "", state: "unk", date: "", from: ts.slice(0,4) };
+          found.push(rec); onFound(rec);
+        }
+      });
+    } catch(e){ /* individual snapshot failure is normal */ }
+  }
+  onStatus("Deep scan done. " + found.length + " ID" + (found.length === 1 ? "" : "s") + " not in the live listing.");
+  return found;
+}
+
+function renderList(title, subtitle, videos, extras){
+  const box = el("div", "listing");
+  const head = el("div", "list-head");
+  head.append(el("h2", null, title));
+  head.append(el("span", "count", subtitle));
+  if (extras) extras.forEach(e => head.append(e));
+  box.append(head);
+  const body = el("div"); body.id = "listBody";
+  videos.forEach(v => body.append(videoRow(v)));
+  box.append(body);
+  return box;
+}
+
+function videoRow(v){
+  const row = el("div", "row");
+  const th = el("div", "row-th");
+  const img = new Image();
+  img.src = "https://i.ytimg.com/vi/" + v.id + "/default.jpg"; img.alt = "";
+  img.onerror = () => { th.innerHTML = ""; };
+  th.append(img);
+  const main = el("div", "row-main");
+  main.append(el("div", "row-t", v.title || "(title unknown — look it up)"));
+  main.append(el("div", "row-s", v.id + (v.date ? "  ·  " + v.date : "") + (v.from ? "  ·  seen " + v.from : "")));
+  const tagClass = { live: "live", gone: "gone", arch: "arch" }[v.state] || "unk";
+  const tagText  = { live: "up", gone: "gone", arch: "archived" }[v.state] || "unchecked";
+  const tag = el("span", "tag " + tagClass, tagText);
+  row.append(th, main, tag);
+  row.onclick = () => { $("#q").value = v.id; go(); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  return row;
+}
+
+async function lookupChannel(p){
+  const run = ++RUN;
+  const stage = $("#stage");
+  stage.innerHTML = "";
+  $("#intro").style.display = "none";
+  const status = el("div", "status", "Resolving channel…");
+  stage.append(status);
+
+  let ucid, data;
+  try { ucid = await resolveChannel(p); }
+  catch(e){ status.textContent = e.message; return; }
+  if (run !== RUN) return;
+
+  status.textContent = "Listing uploads for " + ucid + "…";
+  try { data = await listChannel(ucid); }
+  catch(e){ status.textContent = "Couldn't list uploads: " + (e.message || e) +
+            ". Add a YouTube API key in Settings, or switch Invidious instance."; return; }
+  if (run !== RUN) return;
+
+  status.textContent = "";
+  const scanBtn = el("button", "btn", "Deep scan the Wayback Machine");
+  scanBtn.style.marginLeft = "auto";
+  const box = renderList(data.meta.title || ucid,
+    data.videos.length + " public upload" + (data.videos.length === 1 ? "" : "s") + " · " + ucid,
+    data.videos, [scanBtn]);
+  stage.append(box);
+  const scanStatus = el("div", "status");
+  stage.append(scanStatus);
+
+  scanBtn.onclick = async () => {
+    scanBtn.disabled = true; scanBtn.textContent = "Scanning…";
+    const known = data.videos.map(v => v.id);
+    const body = document.getElementById("listBody");
+    let n = 0;
+    await waybackChannelScan(ucid, known,
+      rec => { n++; const r = videoRow(rec); r.style.background = "#F7F2E9"; body.prepend(r); },
+      msg => { scanStatus.textContent = msg; });
+    scanBtn.textContent = n ? n + " extra IDs found" : "Nothing new found";
+  };
+}
+
+async function lookupQuery(text){
+  const run = ++RUN;
+  const stage = $("#stage");
+  stage.innerHTML = "";
+  $("#intro").style.display = "none";
+  const status = el("div", "status", "Searching…");
+  stage.append(status);
+
+  let results = [];
+  if (cfg.ytkey){
+    try {
+      const d = await json("https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=" +
+        encodeURIComponent(text) + "&key=" + encodeURIComponent(cfg.ytkey), { proxy: "never" });
+      (d.items || []).forEach(it => {
+        if (it.id.videoId) results.push({ id: it.id.videoId, title: it.snippet.title,
+          date: (it.snippet.publishedAt||"").slice(0,10), state: "live" });
+      });
+    } catch(e){ status.textContent = "YouTube API: " + (e.message || e) + " — falling back."; }
+  }
+  if (!results.length){
+    try {
+      const base = cfg.inv.replace(/\/+$/, "");
+      const d = await json(base + "/api/v1/search?q=" + encodeURIComponent(text) + "&type=video", { timeout: 18000 });
+      (Array.isArray(d) ? d : []).forEach(v => {
+        if (v.videoId) results.push({ id: v.videoId, title: v.title, state: "live",
+          date: v.published ? new Date(v.published * 1000).toISOString().slice(0,10) : "" });
+      });
+    } catch(e){}
+  }
+  if (run !== RUN) return;
+
+  if (!results.length){
+    status.innerHTML = "";
+    const box = el("div", "empty-state");
+    box.append(el("h2", null, "No live results"));
+    const p = el("p", null, "Keyword search only reaches videos that are still up. For something " +
+      "already deleted you need its ID — try these subtitle and metadata indexes, which search " +
+      "text that survived the video:");
+    box.append(p);
+    const row = el("div", "ex");
+    [["Filmot subtitle search", "https://filmot.com/search/" + encodeURIComponent(text) + "/1"],
+     ["Archivarix Tube Search", "https://tube.archivarix.net/"],
+     ["Internet Archive full-text", "https://archive.org/search?query=" + encodeURIComponent(text)]
+    ].forEach(([n,u]) => { const a = el("a", "btn ghost", n); a.href = u; a.target = "_blank"; a.rel = "noopener"; row.append(a); });
+    box.append(row);
+    stage.append(box);
+    return;
+  }
+
+  status.textContent = "";
+  stage.append(renderList("Results for " + text, results.length + " live video" + (results.length === 1 ? "" : "s"), results));
+  const tip = el("div", "note");
+  tip.textContent = "These are videos still on YouTube. Click any row to run the full archive check on it.";
+  stage.append(tip);
+}
+
+/* ============================================================
+   vault
+   ============================================================ */
+function vaultGet(){ return store.get("cv.vault", []); }
+function vaultAdd(rec){
+  const v = vaultGet();
+  if (!v.some(x => x.id === rec.id)) v.unshift(rec);
+  store.set("cv.vault", v);
+  renderVault();
+}
+function renderVault(){
+  const v = vaultGet();
+  $("#vaultCount").textContent = v.length ? "· " + v.length + " saved" : "· empty";
+  const list = $("#vaultList");
+  list.innerHTML = "";
+  if (!v.length){
+    const p = el("p", null, "Nothing saved yet. Look something up and press Save to vault.");
+    list.append(p); return;
+  }
+  v.forEach(item => {
+    const row = videoRow({ id: item.id, title: item.title, date: item.date,
+                           state: item.verdict === "live" ? "live" : item.verdict === "found" ? "arch" : "gone" });
+    const del = el("button", "btn ghost", "Remove");
+    del.style.flex = "0 0 auto";
+    del.onclick = (e) => { e.stopPropagation();
+      store.set("cv.vault", vaultGet().filter(x => x.id !== item.id)); renderVault(); };
+    row.append(del);
+    list.append(row);
+  });
+}
+
+/* ============================================================
+   wiring
+   ============================================================ */
+function go(){
+  const p = parseInput($("#q").value);
+  const btn = $("#go");
+  const done = () => { btn.disabled = false; btn.textContent = "Look up"; };
+  btn.disabled = true; btn.textContent = "Working";
+
+  const finish = pr => pr.catch(e => {
+    $("#stage").innerHTML = "";
+    const b = el("div", "empty-state");
+    b.append(el("h2", null, "That didn't go through"));
+    b.append(el("p", null, String(e.message || e)));
+    $("#stage").append(b);
+  }).finally(done);
+
+  if (p.kind === "video")        finish(lookupVideo(p.id));
+  else if (p.kind === "channel") finish(lookupChannel(p));
+  else if (p.kind === "query")   finish(lookupQuery(p.text));
+  else if (p.kind === "playlist"){
+    finish(Promise.reject(new Error("Playlist URLs aren't supported yet. Open the playlist and paste a video link from it.")));
+  } else done();
+}
+
+function refreshParsed(){
+  const p = parseInput($("#q").value);
+  const box = $("#parsed");
+  box.innerHTML = "";
+  if (p.kind === "empty") return;
+  const [kind, val] = describe(p);
+  box.append(el("span", "chip kind", kind));
+  box.append(el("span", "chip", val));
+  if (p.kind === "query" && !cfg.ytkey)
+    box.append(el("span", null, "no API key set — name search falls back to Invidious"));
+}
+
+$("#q").addEventListener("input", refreshParsed);
+$("#q").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+$("#go").addEventListener("click", go);
+$$("[data-ex]").forEach(b => b.onclick = () => { $("#q").value = b.dataset.ex; refreshParsed(); go(); });
+
+["ytkey","proxy","invidious"].forEach(k => {
+  const map = { ytkey: "cv.ytkey", proxy: "cv.proxy", invidious: "cv.inv" };
+  const node = document.getElementById(k);
+  node.value = store.get(map[k], k === "invidious" ? "https://inv.nadeko.net" : "");
+  node.addEventListener("change", () => {
+    store.set(map[k], node.value.trim());
+    $("#settingsStatus").textContent = "Saved to this browser.";
+    refreshParsed();
+  });
+});
+
+$("#vaultExport").onclick = () => {
+  const blob = new Blob([JSON.stringify(vaultGet(), null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "cybervault-" + new Date().toISOString().slice(0,10) + ".json";
+  a.click(); URL.revokeObjectURL(a.href);
+};
+$("#vaultClear").onclick = () => { if (confirm("Clear every saved record?")){ store.set("cv.vault", []); renderVault(); } };
+
+renderDocs();
+renderVault();
+
+/* deep link: ?q=... */
+const initial = new URLSearchParams(location.search).get("q");
+if (initial){ $("#q").value = initial; refreshParsed(); go(); }
+</script>
+</body>
+</html>
